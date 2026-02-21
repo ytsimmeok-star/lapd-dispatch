@@ -1,52 +1,67 @@
 import streamlit as st
 from supabase import create_client
 
-# --- VERBINDUNG ZU DEINER DB ---
-# Ersetze die xxxx mit deinen Daten aus Supabase
-URL = "https://xxxx.supabase.co"
-KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." 
+# --- VERBINDUNG (Deine Daten hier eintragen!) ---
+URL = "https://djygnispywljflrhxwyv.supabase.co"
+KEY = "sb_publishable_sRR_KUa2ujLYxCaktLhRWQ_trkT8vXY"
 supabase = create_client(URL, KEY)
 
 st.set_page_config(page_title="LAPD Dispatch Web", layout="wide")
 
-# --- STYLING ---
-st.markdown("""
-    <style>
-    .main { background-color: #001D3D; color: white; }
-    .stButton>button { background-color: #FFD700; color: black; font-weight: bold; }
-    </style>
-    """, unsafe_allow_content_html=True)
-
+# --- UI HEADER ---
 st.title("🚨 LAPD MDC - Web Dispatch")
 
-# --- EINHEIT HINZUFÜGEN ---
+# --- SIDEBAR: EINHEITEN HINZUFÜGEN ---
 with st.sidebar:
     st.header("Unit Deployment")
     call = st.text_input("Callsign (z.B. 1-A-12)")
     offi = st.text_input("Officers")
     if st.button("DEPLOY UNIT"):
         if call and offi:
-            supabase.table("units").insert({"callsign": call, "officers": offi, "status": "AVAILABLE"}).execute()
-            st.rerun()
+            try:
+                supabase.table("units").insert({"callsign": call, "officers": offi, "status": "AVAILABLE"}).execute()
+                st.success("Einheit hinzugefügt!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Fehler: {e}")
 
-# --- EINHEITEN ANZEIGEN ---
+# --- HAUPTBEREICH: EINHEITEN ANZEIGEN ---
 st.subheader("Aktive Einheiten im Feld")
-res = supabase.table("units").select("*").execute()
 
-for unit in res.data:
-    with st.container(border=True):
-        col1, col2, col3 = st.columns([3, 2, 1])
-        col1.write(f"**{unit['callsign']}** | {unit['officers']}")
-        
-        # Status Dropdown
-        status_options = ["AVAILABLE", "EN ROUTE", "BUSY", "OFF DUTY"]
-        idx = status_options.index(unit['status']) if unit['status'] in status_options else 0
-        new_status = col2.selectbox("Status", status_options, index=idx, key=f"s_{unit['id']}")
-        
-        if new_status != unit['status']:
-            supabase.table("units").update({"status": new_status}).eq("id", unit['id']).execute()
-            st.rerun()
+try:
+    res = supabase.table("units").select("*").execute()
+    for unit in res.data:
+        # Eine Box für jede Einheit
+        with st.container(border=True):
+            col1, col2, col3 = st.columns([3, 2, 1])
             
-        if col3.button("LÖSCHEN", key=f"d_{unit['id']}"):
-            supabase.table("units").delete().eq("id", unit['id']).execute()
-            st.rerun()
+            with col1:
+                st.write(f"**Unit:** {unit['callsign']}")
+                st.write(f"**Crew:** {unit['officers']}")
+            
+            with col2:
+                # Status Dropdown
+                status_options = ["AVAILABLE", "EN ROUTE", "BUSY", "OFF DUTY"]
+                # Sucht den aktuellen Index des Status in der Liste
+                current_idx = status_options.index(unit['status']) if unit['status'] in status_options else 0
+                
+                new_status = st.selectbox(
+                    "Status ändern", 
+                    status_options, 
+                    index=current_idx, 
+                    key=f"status_{unit['id']}"
+                )
+                
+                # Update bei Änderung
+                if new_status != unit['status']:
+                    supabase.table("units").update({"status": new_status}).eq("id", unit['id']).execute()
+                    st.rerun()
+            
+            with col3:
+                # Lösch-Button
+                if st.button("LÖSCHEN", key=f"del_{unit['id']}", type="primary"):
+                    supabase.table("units").delete().eq("id", unit['id']).execute()
+                    st.rerun()
+
+except Exception as e:
+    st.info("Noch keine Einheiten in der Datenbank oder Verbindungsproblem.")
