@@ -9,7 +9,7 @@ supabase = create_client(URL, KEY)
 st.set_page_config(page_title="LAPD Dispatch Web", layout="wide")
 
 # --- UI HEADER ---
-st.title("🚨 LAPD MDC - Web Dispatch")
+st.title("LAPD MDC - Web Dispatch")
 
 # --- SIDEBAR: EINHEITEN HINZUFÜGEN ---
 with st.sidebar:
@@ -65,3 +65,4 @@ try:
 
 except Exception as e:
     st.info("Noch keine Einheiten in der Datenbank oder Verbindungsproblem.")
+
